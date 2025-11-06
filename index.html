@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Plná moc – podpis</title>
+<style>
+body { font-family: Arial, sans-serif; margin: 20px; }
+label { font-weight: bold; display: block; margin-top: 10px; }
+input { padding: 8px; width: 100%; }
+button { padding: 10px 14px; margin-top: 15px; }
+#pdfContainer { border: 1px solid #999; margin-top: 20px; }
+canvas { border:1px dashed #0a58ff; width:100%; height:300px; margin-top:10px; }
+#resultFrame { width:100%; height:600px; border:1px solid #333; margin-top:20px; display:none; }
+</style>
+</head>
+<body>
+
+<h2>Vyplnenie a podpis plnej moci</h2>
+<p>Vyplňte údaje nižšie, podpíšte sa a kliknite Vygenerovať. Zobrazí sa vám kompletne podpísané PDF. Dokument sa zároveň odošle splnomocnencovi.</p>
+
+<label>Meno a priezvisko</label>
+<input id="i_name">
+
+<label>Trvalý pobyt</label>
+<input id="i_addr">
+
+<label>Rodné číslo</label>
+<input id="i_rc">
+
+<label>Miesto podpísania</label>
+<input id="i_place">
+
+<label>Dátum</label>
+<input id="i_date" type="date">
+
+<label>Email klienta (voliteľné – pre zaslanie podpísaného PDF)</label>
+<input id="i_client_email" placeholder="email@example.com">
+
+<h3>Podpis (Splnomocniteľ)</h3>
+<canvas id="sigPad"></canvas>
+<button onclick="clearPad()">Vyčistiť podpis</button>
+
+<h3>Náhľad dokumentu</h3>
+<div id="pdfContainer">
+    <embed src="template.pdf" width="100%" height="500px" type="application/pdf">
+</div>
+
+<button onclick="generatePDF()">✅ Vygenerovať podpísané PDF</button>
+
+<iframe id="resultFrame"></iframe>
+
+<button onclick="sendEmail()">✉️ Odoslať podpísané PDF emailom</button>
+
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/emailjs-com@2/dist/email.min.js"></script>
+
+<script>
+emailjs.init("BDiw7IJQiDnlCYFPX");
+
+let lastPdfBytes = null;
+
+const canvas = document.getElementById("sigPad");
+canvas.width = canvas.offsetWidth;
+canvas.height = canvas.offsetHeight;
+const signaturePad = new SignaturePad(canvas, {
+  penColor: "#0a58ff",
+  minWidth: 0.7,
+  maxWidth: 1.4
+});
+
+function clearPad() { signaturePad.clear(); }
+
+async function generatePDF() {
+  if (signaturePad.isEmpty()) { alert("Prosím, podpíšte sa."); return; }
+
+  const existingPdfBytes = await fetch("template.pdf").then(r => r.arrayBuffer());
+  const pdfDoc = await PDFLib.PDFDocument.load(existingPdfBytes);
+  const page = pdfDoc.getPages()[0];
+  const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+
+  function draw(text, x, y) {
+    page.drawText(text, { x, y, size: 11, font });
+  }
+
+  draw(i_name.value, 50, 560);
+  draw(i_addr.value, 50, 545);
+  draw(i_rc.value,   50, 530);
+  draw(i_place.value, 50, 200);
+
+  if (i_date.value) {
+    const p = i_date.value.split("-");
+    draw(p[2] + "." + p[1] + "." + p[0], 150, 200);
+  }
+
+  const dataUrl = signaturePad.toDataURL();
+  const pngImage = await pdfDoc.embedPng(dataUrl);
+  page.drawImage(pngImage, { x: 50, y: 250, width: 120, height: 60 });
+
+  lastPdfBytes = await pdfDoc.save();
+
+  const blob = new Blob([lastPdfBytes], { type: "application/pdf" });
+  const url = URL.createObjectURL(blob);
+
+  const frame = document.getElementById("resultFrame");
+  frame.style.display = "block";
+  frame.src = url;
+
+  alert("✅ PDF bolo vygenerované.");
+}
+
+function sendEmail() {
+  if (!lastPdfBytes) { alert("Najprv vygenerujte PDF."); return; }
+
+  const clientEmail = i_client_email.value.trim();
+  const agentEmail = "m.sunok@protonmail.com";
+
+  const pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(lastPdfBytes)));
+
+  const templateParams = {
+    client_email: clientEmail,
+    agent_email: agentEmail,
+    pdf_file: pdfBase64,
+    client_name: i_name.value
+  };
+
+  emailjs
+    .send("service_gnniw7e", "template_184peha", templateParams)
+    .then(() => alert("✅ Email bol odoslaný."))
+    .catch(e => alert("Chyba: " + e));
+}
+</script>
+
+</body>
+</html>
