@@ -6,19 +6,29 @@
 <title>Plná moc – podpis</title>
 
 <style>
-body { font-family: Arial, sans-serif; margin: 20px; }
+body { font-family: Arial; margin:20px; }
 label { display:block; margin-top:10px; font-weight:bold; }
 input { width:100%; padding:8px; }
 button { padding:10px 14px; margin-top:15px; cursor:pointer; }
+
 #sigPanel { display:none; margin-top:20px; }
-canvas { border:1px dashed #0a58ff; width:100%; height:260px; }
+canvas {
+    border:1px dashed #0a58ff;
+    width:100%;
+    height:260px;
+}
 </style>
 </head>
+
 <body>
 
+<!-- ✅ 1) PDF náhľad hore -->
 <h2>Náhľad dokumentu</h2>
-<embed src="template.pdf" width="100%" height="520px" type="application/pdf">
+<embed src="template.pdf"
+       width="100%" height="520px"
+       type="application/pdf">
 
+<!-- ✅ 2) FORMULÁR pod PDF -->
 <h2>Vyplňte údaje</h2>
 
 <label>Meno a priezvisko</label>
@@ -41,13 +51,16 @@ canvas { border:1px dashed #0a58ff; width:100%; height:260px; }
 
 <button onclick="showSignature()">🖊️ Podpísať</button>
 
+<!-- ✅ 3) Panel na podpis (skrytý) -->
 <div id="sigPanel">
-<h3>Podpis</h3>
-<p>Podpíšte sa na čiaru:</p>
-<div style="border-bottom:2px solid black; width:80%; margin:0 auto 10px auto;"></div>
-<canvas id="sigPad"></canvas>
-<button onclick="clearPad()">Vymazať podpis</button>
-<button onclick="confirmSignature()">Potvrdiť podpis</button>
+    <h3>Podpis</h3>
+    <p>Podpíšte sa na čiaru:</p>
+    <div style="border-bottom:2px solid black; width:80%; margin:0 auto 10px auto;"></div>
+
+    <canvas id="sigPad"></canvas>
+
+    <button onclick="clearPad()">Vymazať podpis</button>
+    <button onclick="confirmSignature()">Potvrdiť podpis</button>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
@@ -62,6 +75,7 @@ let finalSignature = null;
 
 function showSignature(){
     document.getElementById("sigPanel").style.display = "block";
+
     const canvas = document.getElementById("sigPad");
     canvas.width = canvas.offsetWidth;
     canvas.height = canvas.offsetHeight;
@@ -73,7 +87,9 @@ function showSignature(){
     });
 }
 
-function clearPad(){ signaturePad.clear(); }
+function clearPad(){
+    signaturePad.clear();
+}
 
 async function confirmSignature(){
     if(signaturePad.isEmpty()){
@@ -88,35 +104,35 @@ async function generatePDF(){
     const existingPdfBytes = await fetch("template.pdf").then(r => r.arrayBuffer());
     const pdfDoc = await PDFLib.PDFDocument.load(existingPdfBytes);
     const page = pdfDoc.getPages()[0];
-    const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
 
+    const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
     function draw(text, x, y){
-        page.drawText(text, { x, y, size: 11, font });
+        page.drawText(text, { x, y, size:11, font });
     }
 
-    // ✅ Polia splnomocniteľa – veľmi presné umiestnenie
-    draw(i_name.value, 150, 650);
-    draw(i_addr.value, 150, 630);
-    draw(i_rc.value,   150, 610);
+    /* ✅ Texty splnomocniteľa – upravené */
+    draw(i_name.value, 160, 655);
+    draw(i_addr.value, 160, 635);
+    draw(i_rc.value,   160, 615);
 
-    draw(i_place.value, 150, 510);
+    draw(i_place.value, 160, 515);
 
     if(i_date.value){
         const d = i_date.value.split("-");
-        draw(d[2]+"."+d[1]+"."+d[0], 320, 510);
+        draw(d[2]+"."+d[1]+"."+d[0], 310, 515);
     }
 
-    // ✅ Klientov podpis medzi "Splnomocnenec" a bodkovanú čiaru
+    /* ✅ PODPIS – presne medzi „Splnomocnenec“ a bodkovanú čiaru */
     const sig = await pdfDoc.embedPng(finalSignature);
     page.drawImage(sig, {
-        x: 370,     // presne nad pravou bodkovanou čiarou
-        y: 455,     // medzi text a čiaru
+        x: 365,   /* presne nad pravou bodkovanou čiarou */
+        y: 460,   /* medzi text a čiaru */
         width: 160,
         height: 70
     });
 
     const pdfBytes = await pdfDoc.save();
-    const blob = new Blob([pdfBytes], { type: "application/pdf" });
+    const blob = new Blob([pdfBytes], { type:"application/pdf" });
     const url = URL.createObjectURL(blob);
 
     window.open(url, "_blank");
@@ -130,7 +146,7 @@ async function generatePDF(){
         client_name: i_name.value
     });
 
-    alert("✅ Vygenerované a odoslané.");
+    alert("✅ Hotovo! PDF bolo vygenerované a odoslané.");
 }
 </script>
 
